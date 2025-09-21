@@ -1,0 +1,14 @@
+{
+  "listings": [
+    {
+      "id": "lot-1",
+      "url": "https://auctivo.net/nl/auction/de8b8c9f-9cc2-47a4-9685-7b7a075a6992/lot/65305fc7-6dad-4501-b683-3e48cd4b040c",
+      "name": "Lot 1"
+    },
+    {
+      "id": "lot-2",
+      "url": "https://auctivo.net/nl/auction/de8b8c9f-9cc2-47a4-9685-7b7a075a6992/lot/64f35eaf-acb2-4b10-a60c-f4f7d95f8017",
+      "name": "Lot 2"
+    }
+  ]
+}

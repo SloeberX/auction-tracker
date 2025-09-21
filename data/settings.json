@@ -1,0 +1,6 @@
+{
+  "discordWebhookUrl": "",
+  "alertOnNewBid": true,
+  "alertOn30min": true,
+  "alertCooldownMinutes": 10
+}
