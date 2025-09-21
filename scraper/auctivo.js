@@ -1,99 +1,151 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const DEBUG_DIR = path.resolve(__dirname, '..', 'public', 'debug');
-function ensureDir(p){ try{ fs.mkdirSync(p,{recursive:true}); }catch{} }
-
+/**
+ * Auctivo scraper (table-only) — exports scrapeAuctivo()
+ */
 function parseAmount(txt){
-  const cleaned = (txt||'').replace(/[\n\t]/g,' ').replace(/[^0-9,.,\-€]/g,'').replace(/€/g,'').trim();
-  if(!cleaned) return null;
-  const normalized = cleaned.replace(/\./g,'').replace(/,(\d{1,2})$/, '.$1');
-  const num = Number(normalized);
-  return Number.isFinite(num) ? num : null;
+  if (txt == null) return null;
+  const m = String(txt).replace(/\s+/g,' ').match(/€\s*([\d.]+(?:,\d{1,2})?)/);
+  if (!m) return null;
+  return Number(m[1].replace(/\./g,'').replace(',', '.'));
 }
-
-function mondayStart(d){
-  const x = new Date(d);
-  const day = x.getDay()===0 ? 7 : x.getDay(); // 1..7, Monday=1
-  x.setDate(x.getDate() - (day-1));
-  x.setHours(0,0,0,0);
-  return x;
-}
-function startOfDayISO(d){ const x=new Date(d); x.setHours(0,0,0,0); return x.toISOString(); }
-
 function parseDutchRelativeToDateISO(text, baseStr){
   if(!text) return null;
   const t = String(text).trim().toLowerCase();
-
-  // base date from page (Europe/Amsterdam) string; fall back to now
   const base = baseStr ? new Date(baseStr) : new Date();
-  // Local midnight helper
   const dayStart = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  // Monday 00:00 of the week of date d (NL convention)
   const mondayStart = (d) => {
     const ds = dayStart(d);
-    const dow = (ds.getDay() + 6) % 7; // Monday=0..Sunday=6
+    const dow = (ds.getDay() + 6) % 7;
     return new Date(ds.getTime() - dow*24*3600*1000);
   };
-
-  // absolute dd-mm-yyyy or dd-mm-yy
   const mAbs = t.match(/\b(\d{1,2})-(\d{1,2})-(\d{2,4})\b/);
   if (mAbs){
     let [_, dd, mm, yy] = mAbs;
-    dd = Number(dd); mm = Number(mm)-1; yy = Number(yy); if (yy < 100) yy += 2000;
-    const d = new Date(yy, mm, dd, 0, 0, 0, 0);
-    return d.toISOString();
+    dd = Number(dd); mm = Number(mm)-1; yy = Number(yy); if (yy<100) yy += 2000;
+    return new Date(yy, mm, dd, 0, 0, 0, 0).toISOString();
   }
-
-  // vandaag / gisteren / eergisteren
-  if (/\bvandaag\b/.test(t)){
-    return dayStart(base).toISOString();
-  }
-  if (/\bgisteren\b/.test(t)){
-    const d = new Date(dayStart(base).getTime() - 1*24*3600*1000);
-    return d.toISOString();
-  }
-  if (/\beergisteren\b/.test(t)){
-    const d = new Date(dayStart(base).getTime() - 2*24*3600*1000);
-    return d.toISOString();
-  }
-
-  // X dagen geleden
+  if (/\bvandaag\b/.test(t))     return dayStart(base).toISOString();
+  if (/\bgisteren\b/.test(t))    return new Date(dayStart(base).getTime()-1*86400000).toISOString();
+  if (/\beergisteren\b/.test(t)) return new Date(dayStart(base).getTime()-2*86400000).toISOString();
   const mDays = t.match(/(\d+)\s*dag(?:en)?\s+geleden/);
   if (mDays){
     const n = Number(mDays[1]);
-    const d = new Date(dayStart(base).getTime() - n*24*3600*1000);
-    return d.toISOString();
+    return new Date(dayStart(base).getTime()-n*86400000).toISOString();
   }
-
-  // vorige week / X weken geleden => Monday 00:00 of that week
   if (/\bvorige\s+week\b/.test(t)){
-    const curMon = mondayStart(base);
-    const d = new Date(curMon.getTime() - 7*24*3600*1000);
+    const d = new Date(mondayStart(base).getTime()-7*86400000);
     return d.toISOString();
   }
   const mWeeks = t.match(/(\d+)\s*weken?\s+geleden/);
   if (mWeeks){
     const n = Number(mWeeks[1]);
-    const curMon = mondayStart(base);
-    const d = new Date(curMon.getTime() - n*7*24*3600*1000);
+    const d = new Date(mondayStart(base).getTime()-n*7*86400000);
     return d.toISOString();
   }
-
-  // times like '08:19' or '08:19:53' today
   const mTime = t.match(/\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b/);
   if (mTime){
     const hh = Number(mTime[1]), mi = Number(mTime[2]), ss = Number(mTime[3]||'0');
-    const d = new Date(base.getFullYear(), base.getMonth(), base.getDate(), hh, mi, ss, 0);
-    return d.toISOString();
+    return new Date(base.getFullYear(), base.getMonth(), base.getDate(), hh, mi, ss, 0).toISOString();
   }
-
-  // fallback: let Date try to parse; if it yields a valid date, pass it through
   const d2 = new Date(text);
   if (!isNaN(d2.getTime())) return d2.toISOString();
-
   return null;
 }
 
+export async function scrapeAuctivo({ context, url }){
+  const page = await context.newPage();
+  try{
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForLoadState('networkidle').catch(()=>{});
+    await page.waitForTimeout(300);
+
+    // Ends at
+    let endsAt = null;
+    try{
+      const dt = await page.locator('time[datetime]').first().getAttribute('datetime');
+      if (dt) endsAt = new Date(dt).toISOString();
+    }catch{}
+
+    // Bid table (Bod/Datum)
+    let bids = [];
+    let currentPrice = null;
+    try{
+      const result = await page.evaluate(()=>{
+        function norm(t){ return (t||'').toLowerCase().replace(/\s+/g,' ').trim(); }
+        function whenCell(td){
+          const tm = td.querySelector('time');
+          if (tm){
+            const dt = tm.getAttribute('datetime'); if (dt) return dt;
+            const tt = (tm.textContent||'').trim(); if (tt) return tt;
+          }
+          const al = td.getAttribute('aria-label') || td.getAttribute('title'); if (al) return al.trim();
+          const it = (td.innerText||'').trim(); if (it) return it;
+          const tx = (td.textContent||'').trim(); if (tx) return tx;
+          const sp = td.querySelector('span'); if (sp){ const s=(sp.innerText||sp.textContent||'').trim(); if (s) return s; }
+          return '';
+        }
+        const tables = Array.from(document.querySelectorAll('table'));
+        let target = null;
+        for (const tbl of tables){
+          const ths = Array.from(tbl.querySelectorAll('thead th, tr th')).map(e=>norm(e.textContent));
+          if (ths.some(t=>/\bbod\b/.test(t)) && ths.some(t=>/datum/.test(t))){ target = tbl; break; }
+          const cap = norm(tbl.caption?.textContent || '');
+          if (!target && /geschiedenis|bieden|bid/.test(cap)) target=tbl;
+        }
+        if (!target) return { rows: [], topAmountText: null };
+        const rows = [];
+        const trs = Array.from(target.querySelectorAll('tbody tr'));
+        for (const tr of trs){
+          const tds = Array.from(tr.querySelectorAll('td'));
+          if (tds.length < 2) continue;
+          const amountText = (tds[0].textContent||'').trim();
+          const whenText = whenCell(tds[1]);
+          if (/[€]/.test(amountText)) rows.push({ amountText, whenText });
+        }
+        const topAmountText = rows.length ? rows[0].amountText : null;
+        return { rows, topAmountText };
+      });
+
+      const baseStr = await page.evaluate(()=> new Date().toString());
+      let anchorMs = null;
+      for (const r of result.rows){
+        const amount = parseAmount(r.amountText);
+        let iso = r.whenText ? parseDutchRelativeToDateISO(r.whenText, baseStr) : null;
+        let timeISO = null, dateISO = null;
+        if (iso){
+          const d = new Date(iso);
+          if (d.getHours()===0 && d.getMinutes()===0 && d.getSeconds()===0){
+            d.setHours(0,0,0,0);
+            dateISO = d.toISOString();
+            anchorMs = d.getTime();
+          } else {
+            timeISO = d.toISOString();
+            anchorMs = d.getTime();
+          }
+        } else if (anchorMs){
+          const d = new Date(anchorMs - 86400000);
+          d.setHours(0,0,0,0);
+          dateISO = d.toISOString();
+          anchorMs = d.getTime();
+        }
+        bids.push({ amount, amountText: r.amountText, timeISO, dateISO });
+      }
+      if (result.topAmountText != null){
+        const amtTop = parseAmount(result.topAmountText);
+        if (amtTop != null) currentPrice = amtTop;
+      }
+      const seen = new Set();
+      bids = bids.filter(b=>{
+        const key = `${b.amount ?? b.amountText}-${b.timeISO||b.dateISO}`;
+        if (seen.has(key)) return false; seen.add(key); return true;
+      }).slice(0, 120);
+    }catch{}
+
+    // Minimal meta (title/image aren't required to fix the export bug)
+    const meta = { title: 'Auction lot', currency: 'EUR' };
+    return { meta, url, image: null, endsAt, currentPrice, bids };
+  }catch(e){
+    return { meta:{ title:'Auction lot', currency:'EUR', error: String(e) }, url, image:null, endsAt:null, currentPrice:null, bids:[] };
+  } finally {
+    try{ await page.close(); }catch{}
+  }
+}
