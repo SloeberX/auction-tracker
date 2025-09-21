@@ -1,6 +1,4 @@
-/**
- * Auctivo scraper (table-only) — exports scrapeAuctivo()
- */
+// Auctivo scraper with robust endsAt parsing + image; keeps table-only bid scraping.
 function parseAmount(txt){
   if (txt == null) return null;
   const m = String(txt).replace(/\s+/g,' ').match(/€\s*([\d.]+(?:,\d{1,2})?)/);
@@ -14,7 +12,7 @@ function parseDutchRelativeToDateISO(text, baseStr){
   const dayStart = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const mondayStart = (d) => {
     const ds = dayStart(d);
-    const dow = (ds.getDay() + 6) % 7;
+    const dow = (ds.getDay() + 6) % 7; // Monday=0
     return new Date(ds.getTime() - dow*24*3600*1000);
   };
   const mAbs = t.match(/\b(\d{1,2})-(\d{1,2})-(\d{2,4})\b/);
@@ -58,14 +56,38 @@ export async function scrapeAuctivo({ context, url }){
     await page.waitForLoadState('networkidle').catch(()=>{});
     await page.waitForTimeout(300);
 
-    // Ends at
+    // Title
+    let title = '';
+    try{ title = (await page.title()) || ''; }catch{}
+    if (!title){
+      try{ title = (await page.locator('h1').first().innerText()).trim(); }catch{}
+    }
+
+    // Image (hero/product image)
+    let image = null;
+    try{
+      image = await page.locator('main img, .content img, .gallery img, article img, img').first().getAttribute('src');
+      if (image && image.startsWith('//')) image = 'https:' + image;
+    }catch{}
+
+    // Ends at (prefer datetime attribute, fallback to dd-mm-yyyy HH:mm found in page text)
     let endsAt = null;
     try{
       const dt = await page.locator('time[datetime]').first().getAttribute('datetime');
       if (dt) endsAt = new Date(dt).toISOString();
     }catch{}
+    if (!endsAt){
+      try{
+        const raw = await page.evaluate(()=> document.body ? document.body.innerText : '');
+        const m = raw && raw.match(/\b(\d{2})-(\d{2})-(\d{4}),?\s*(\d{1,2}):(\d{2})\b/);
+        if (m){
+          const dd=+m[1], mm=+m[2]-1, yy=+m[3], hh=+m[4], mi=+m[5];
+          endsAt = new Date(yy, mm, dd, hh, mi, 0, 0).toISOString();
+        }
+      }catch{}
+    }
 
-    // Bid table (Bod/Datum)
+    // Bid table (Bod/Datum only)
     let bids = [];
     let currentPrice = null;
     try{
@@ -87,9 +109,11 @@ export async function scrapeAuctivo({ context, url }){
         let target = null;
         for (const tbl of tables){
           const ths = Array.from(tbl.querySelectorAll('thead th, tr th')).map(e=>norm(e.textContent));
-          if (ths.some(t=>/\bbod\b/.test(t)) && ths.some(t=>/datum/.test(t))){ target = tbl; break; }
+          const hasBod = ths.some(t=>/\bbod\b/.test(t));
+          const hasDatum = ths.some(t=>/datum/.test(t));
+          if (hasBod && hasDatum){ target = tbl; break; }
           const cap = norm(tbl.caption?.textContent || '');
-          if (!target && /geschiedenis|bieden|bid/.test(cap)) target=tbl;
+          if (!target && /geschiedenis|bieden|bid/.test(cap)) target = tbl;
         }
         if (!target) return { rows: [], topAmountText: null };
         const rows = [];
@@ -140,9 +164,8 @@ export async function scrapeAuctivo({ context, url }){
       }).slice(0, 120);
     }catch{}
 
-    // Minimal meta (title/image aren't required to fix the export bug)
-    const meta = { title: 'Auction lot', currency: 'EUR' };
-    return { meta, url, image: null, endsAt, currentPrice, bids };
+    const meta = { title: title || 'Auction lot', currency: 'EUR' };
+    return { meta, url, image, endsAt, currentPrice, bids };
   }catch(e){
     return { meta:{ title:'Auction lot', currency:'EUR', error: String(e) }, url, image:null, endsAt:null, currentPrice:null, bids:[] };
   } finally {
