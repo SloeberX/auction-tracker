@@ -1,9 +1,19 @@
-// Auctivo scraper with robust endsAt parsing + image; keeps table-only bid scraping.
+// Improved Auctivo scraper: robust endsAt + image (og:image, JSON-LD, gallery)
 function parseAmount(txt){
   if (txt == null) return null;
   const m = String(txt).replace(/\s+/g,' ').match(/€\s*([\d.]+(?:,\d{1,2})?)/);
   if (!m) return null;
   return Number(m[1].replace(/\./g,'').replace(',', '.'));
+}
+function absolutize(u){
+  if (!u) return null;
+  if (u.startsWith('http://') || u.startsWith('https://')) return u;
+  if (u.startsWith('//')) return 'https:' + u;
+  // relative
+  try{
+    const b = window.location.origin;
+    return new URL(u, b).toString();
+  }catch{ return u; }
 }
 function parseDutchRelativeToDateISO(text, baseStr){
   if(!text) return null;
@@ -12,7 +22,7 @@ function parseDutchRelativeToDateISO(text, baseStr){
   const dayStart = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const mondayStart = (d) => {
     const ds = dayStart(d);
-    const dow = (ds.getDay() + 6) % 7; // Monday=0
+    const dow = (ds.getDay() + 6) % 7;
     return new Date(ds.getTime() - dow*24*3600*1000);
   };
   const mAbs = t.match(/\b(\d{1,2})-(\d{1,2})-(\d{2,4})\b/);
@@ -49,6 +59,77 @@ function parseDutchRelativeToDateISO(text, baseStr){
   return null;
 }
 
+async function extractImage(page){
+  // 1) meta tags
+  try{
+    const og = await page.locator('meta[property="og:image"], meta[name="og:image"]').first().getAttribute('content');
+    if (og) return og.startsWith('//') ? 'https:' + og : og;
+  }catch{}
+  try{
+    const tw = await page.locator('meta[name="twitter:image"], meta[property="twitter:image"]').first().getAttribute('content');
+    if (tw) return tw.startsWith('//') ? 'https:' + tw : tw;
+  }catch{}
+  // 2) JSON-LD
+  try{
+    const jsons = await page.locator('script[type="application/ld+json"]').allTextContents();
+    for (const raw of jsons){
+      try{
+        const data = JSON.parse(raw.trim());
+        const arr = Array.isArray(data) ? data : [data];
+        for (const obj of arr){
+          const img = obj?.image || obj?.imageUrl || obj?.thumbnailUrl;
+          if (typeof img === 'string') return img.startsWith('//') ? 'https:' + img : img;
+          if (Array.isArray(img) && img.length) return (String(img[0]).startsWith('//') ? 'https:' + img[0] : String(img[0]));
+        }
+      }catch{}
+    }
+  }catch{}
+  // 3) link rel
+  try{
+    const l = await page.locator('link[rel="image_src"]').first().getAttribute('href');
+    if (l) return l.startsWith('//') ? 'https:' + l : l;
+  }catch{}
+  // 4) Active gallery slide (swiper/slick) or picture/img
+  try{
+    const sel = [
+      '.swiper-slide-active img',
+      '.slick-current img',
+      '.gallery img',
+      'figure img',
+      'main picture source[srcset], main picture img, main img',
+      'article picture source[srcset], article picture img, article img'
+    ].join(', ');
+    const el = page.locator(sel).first();
+    // Prefer srcset highest resolution if available
+    const srcset = await el.getAttribute('srcset').catch(()=>null);
+    if (srcset){
+      const parts = srcset.split(',').map(s=>s.trim());
+      const last = parts[parts.length-1].split(' ')[0];
+      if (last) return last.startsWith('//') ? 'https:' + last : last;
+    }
+    const src = await el.getAttribute('src').catch(()=>null);
+    if (src) return src.startsWith('//') ? 'https:' + src : src;
+  }catch{}
+  // 5) Fallback: first large img on page
+  try{
+    const all = await page.locator('img').evaluateAll((imgs)=>{
+      const pick = [];
+      for (const im of imgs){
+        const w = im.naturalWidth || im.width || 0;
+        const h = im.naturalHeight || im.height || 0;
+        const src = im.getAttribute('src') || im.getAttribute('data-src') || '';
+        if (w>=600 && h>=400 && src) pick.push(src);
+      }
+      return pick;
+    });
+    if (all && all.length){
+      const u = all[0];
+      return u.startsWith('//') ? 'https:' + u : u;
+    }
+  }catch{}
+  return null;
+}
+
 export async function scrapeAuctivo({ context, url }){
   const page = await context.newPage();
   try{
@@ -56,21 +137,16 @@ export async function scrapeAuctivo({ context, url }){
     await page.waitForLoadState('networkidle').catch(()=>{});
     await page.waitForTimeout(300);
 
-    // Title
     let title = '';
     try{ title = (await page.title()) || ''; }catch{}
     if (!title){
       try{ title = (await page.locator('h1').first().innerText()).trim(); }catch{}
     }
 
-    // Image (hero/product image)
-    let image = null;
-    try{
-      image = await page.locator('main img, .content img, .gallery img, article img, img').first().getAttribute('src');
-      if (image && image.startsWith('//')) image = 'https:' + image;
-    }catch{}
+    // Image
+    let image = await extractImage(page);
 
-    // Ends at (prefer datetime attribute, fallback to dd-mm-yyyy HH:mm found in page text)
+    // Ends at
     let endsAt = null;
     try{
       const dt = await page.locator('time[datetime]').first().getAttribute('datetime');
