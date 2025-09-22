@@ -1,39 +1,37 @@
 <!doctype html>
-<html>
+<html lang="nl">
 <head>
-<meta charset='utf-8'>
-<meta name='viewport' content='width=device-width,initial-scale=1'>
-<title>Auction Tracker</title>
-<script src='/socket.io/socket.io.js'></script>
-<style>
-body{font-family:Arial,system-ui;background:#0b1220;color:#e6edf7;margin:0}
-header{padding:24px;display:flex;justify-content:space-between;align-items:center}
-.container{max-width:1100px;margin:0 auto;padding:0 24px 48px}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}
-.card{background:#111a2b;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px}
-button{background:#0f1b34;color:#e6edf7;border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:6px 10px;cursor:pointer}
-table{width:100%;border-collapse:collapse;margin-top:10px}
-th,td{padding:8px;border-bottom:1px solid rgba(255,255,255,.06)}
-a{color:#7cc4ff;text-decoration:none}
-.thumb{width:100%;height:160px;object-fit:cover;border-radius:10px;background:#0b1220;border:1px solid rgba(255,255,255,.06)}
-</style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Auction Tracker</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans","Apple Color Emoji","Segoe UI Emoji"; background:#0b1221; color:#dce6ff; margin:0; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 16px; }
+    .topbar { display:flex; gap:8px; justify-content:flex-end; margin-bottom:10px; }
+    button { background:#17305f; border:1px solid #284d8f; color:#cfe0ff; border-radius:8px; padding:6px 10px; cursor:pointer; }
+    button:hover { background:#1b3a72; }
+    .cards { display:grid; grid-template-columns: repeat(auto-fill,minmax(340px,1fr)); gap:14px; }
+    .card { background:#0f1b34; border:1px solid #1f3667; border-radius:12px; padding:12px; }
+    .title { font-weight:700; margin-bottom:6px }
+    .url a { color:#7cc4ff; text-decoration:none }
+    .thumb { width:100%; max-height:180px; object-fit:cover; border-radius:8px; display:none }
+    table { width:100%; border-collapse:collapse; margin-top:6px }
+    th, td { padding:4px 6px; border-bottom:1px solid #1f2b4a; font-size:13px }
+    th { color:#a7b7d6; text-align:left }
+    .status { padding:4px 8px; border-radius:12px; background:#0f1b34 }
+    .freq { color:#7a8699; font-size:12px; margin-top:4px }
+  </style>
+  <script src="/socket.io/socket.io.js"></script>
+  <script defer src="/client.js"></script>
+  <script defer src="/discord-ui.js"></script>
 </head>
 <body>
-  <div style="display:flex;justify-content:flex-end;gap:8px;margin:12px 16px 0 16px;">
-    <button id="btn-settings">Discord</button>
+  <div class="wrap">
+    <div class="topbar">
+      <button id="btn-settings">Discord</button>
+      <button id="btn-add">Add lot</button>
+    </div>
+    <div id="cards" class="cards"></div>
   </div>
-
-<header>
-  <h1 style='margin:0'>Auction Tracker</h1>
-  <div>
-    <button id="btn-add">➕ Add lot</button>
-    <a href='/debug/' style='color:#7cc4ff;margin-left:10px'>Debug snapshots</a>
-  </div>
-</header>
-<div class='container'>
-  <div id='cards' class='grid'></div>
-  <footer>Lots are saved in <code>data/listings.json</code> and survive restarts.</footer>
-</div>
-<script src='client.js'></script>
 </body>
 </html>

@@ -1,9 +1,9 @@
 {
   "name": "auction-tracker",
-  "version": "1.10.0",
-  "description": "Persistent bid history + observed-bid timestamps + week-relative parsing; Discord alerts + images.",
-  "main": "server.js",
+  "version": "1.13.0",
+  "description": "Auction tracker with bid-history, countdown, images, exports, and Discord embeds.",
   "type": "module",
+  "main": "server.js",
   "scripts": { "start": "node server.js" },
   "dependencies": {
     "dotenv": "^16.4.5",
