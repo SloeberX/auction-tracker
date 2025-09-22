@@ -4,7 +4,9 @@ export async function scrapeAuctivo(context, url) {
   const out = { title: null, endsAt: null, currentPrice: null, image: null, bids: [], meta: { currency: 'EUR' } };
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.waitForTimeout(800);
+    await page.waitForLoadState('domcontentloaded').catch(()=>{});
+    await page.waitForLoadState('networkidle', {timeout:3000}).catch(()=>{});
+    await page.waitForTimeout(500);
 
     // Accept cookies if shown
     try {

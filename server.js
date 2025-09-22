@@ -195,12 +195,15 @@ async function startLoop(item){
       const r = await scraper.fetch(item.url);
       const prev = state.get(id) || {};
       const displayName = prev?.meta?.displayName || item.name || null;
-      nextDelay = computeNextIntervalMs(r.endsAt);
+      nextDelay = computeNextIntervalMs(r.endsAt || (prev && prev.endsAt));
 
       mergeBidsPersist(id, r.bids || []);
 
       const prevAmount = prev.currentPrice ?? null;
       const newAmount = Number.isFinite(r.currentPrice) ? r.currentPrice : prevAmount;
+      const mergedEndsAt = r.endsAt || prev.endsAt || null;
+      const mergedImage = r.image || prev.image || null;
+      const mergedTitle = r.title || prev.title || item.name || null;
       let lastChangeAt = prev.lastChangeAt || null;
       if (Number.isFinite(newAmount) && newAmount !== prevAmount){
         lastChangeAt = iso();
