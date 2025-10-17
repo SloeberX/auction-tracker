@@ -1,21 +1,31 @@
-window.__intervals = window.__intervals || {};
-
 const elList = document.getElementById('list');
 const elEmpty = document.getElementById('empty');
 const elStatus = document.getElementById('status');
+
+// add lot modal
 const modal = document.getElementById('modal');
 const lotUrl = document.getElementById('lotUrl');
-
-function openModal(){ modal.style.display='flex'; lotUrl.value=''; lotUrl.focus(); }
-function closeModal(){ modal.style.display='none'; }
-
-document.getElementById('addBtn').onclick=openModal;
-document.getElementById('cancel').onclick=closeModal;
-document.getElementById('save').onclick=async ()=>{
+document.getElementById('addBtn').onclick = ()=>{ modal.style.display='flex'; lotUrl.value=''; lotUrl.focus(); };
+document.getElementById('cancel').onclick = ()=>{ modal.style.display='none'; };
+document.getElementById('save').onclick = async ()=>{
   const url = lotUrl.value.trim();
   if(!url) return;
   const r = await fetch('/api/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})}).then(r=>r.json());
-  if(r.ok){ closeModal(); await refresh(); } else { alert('Add failed: '+(r.error||'unknown')); }
+  if(r.ok){ modal.style.display='none'; refresh(); } else { alert('Add failed: '+(r.error||'unknown')); }
+};
+
+// discord settings modal
+const dModal = document.getElementById('discordModal');
+const webhook = document.getElementById('webhook');
+document.getElementById('discordBtn').onclick = async ()=>{
+  dModal.style.display='flex';
+  try{ const s = await fetch('/api/settings').then(r=>r.json()); webhook.value = (s.discordWebhook||''); }catch{}
+};
+document.getElementById('dCancel').onclick = ()=> dModal.style.display='none';
+document.getElementById('dSave').onclick = async ()=>{
+  const ok = await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({discordWebhook:webhook.value.trim()})}).then(r=>r.ok);
+  if(!ok) alert('Failed to save');
+  dModal.style.display='none';
 };
 
 function fmt(i){ return i<10?('0'+i):i; }
@@ -42,6 +52,7 @@ function render(listings, history){
   elList.innerHTML='';
   if(!listings || !listings.length){ elEmpty.style.display='block'; return; }
   elEmpty.style.display='none';
+
   for(const it of listings){
     const card = document.createElement('div'); card.className='card';
     const hist = (history && history[it.id]) || [];
@@ -50,7 +61,7 @@ function render(listings, history){
 
     card.innerHTML = `
       <img class="thumb" src="${it.image||''}" onerror="this.style.display='none'">
-      <h3>${it.title||'Untitled'}</h3>
+      <h3>${it.title||it.url||'Untitled'}</h3>
       <div class="row"><span class="small">Open listing</span><a class="btn secondary" href="${it.url}" target="_blank" rel="noopener">Open</a></div>
       <div class="row"><span class="small">Ends in</span><span class="badge" data-end="${it.endsAt||''}">--:--:--</span></div>
       <div class="row"><span class="small">Price</span><span>${it.currentPrice!=null?('€ '+it.currentPrice.toFixed(2)):'—'}</span></div>
@@ -59,6 +70,7 @@ function render(listings, history){
       <div class="actions">
         <button class="btn secondary" data-rename="${it.id}">Rename</button>
         <button class="btn secondary" data-remove="${it.id}">Remove</button>
+        <button class="btn" data-ping="${it.id}">Send to Discord</button>
       </div>
       <table class="table">
         <thead><tr><td>Time</td><td>Amount</td></tr></thead>
@@ -86,7 +98,7 @@ function render(listings, history){
     btn.onclick = async ()=>{
       const id = btn.getAttribute('data-remove');
       await fetch('/api/remove',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
-      await refresh();
+      refresh();
     };
   });
   document.querySelectorAll('[data-rename]').forEach(btn=>{
@@ -95,7 +107,14 @@ function render(listings, history){
       const title = prompt('New title:');
       if(!title) return;
       await fetch('/api/rename',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,title})});
-      await refresh();
+      refresh();
+    };
+  });
+  document.querySelectorAll('[data-ping]').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const id = btn.getAttribute('data-ping');
+      const r = await fetch('/api/ping-discord',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})}).then(r=>r.json());
+      if(!r.ok) alert('Discord send failed: '+(r.error||'unknown'));
     };
   });
 }

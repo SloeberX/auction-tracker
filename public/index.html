@@ -19,10 +19,10 @@ h1{font-weight:700;font-size:22px}
 .row{display:flex;align-items:center;justify-content:space-between;margin:6px 0;color:var(--muted)}
 img.thumb{width:100%;height:200px;object-fit:cover;border-radius:10px;background:#000}
 .small{font-size:12px;color:var(--muted)}
-.actions{display:flex;gap:8px;margin-top:8px}
+.actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
 .badge{background:var(--chip);color:var(--text);padding:3px 8px;border-radius:999px;font-size:11px}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center}
-.modal .box{background:var(--card);padding:18px;border-radius:12px;min-width:360px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:10}
+.modal .box{background:var(--card);padding:18px;border-radius:12px;min-width:360px;max-width:90vw}
 .modal .box h2{margin-bottom:10px}
 .modal input{width:100%;padding:8px;border-radius:8px;border:1px solid #22314e;background:#0a1322;color:#cfe1ff}
 .modal .row{justify-content:flex-end;gap:10px;margin-top:10px}
@@ -30,13 +30,15 @@ img.thumb{width:100%;height:200px;object-fit:cover;border-radius:10px;background
 .table{width:100%;border-collapse:collapse;margin-top:6px}
 td{border-top:1px solid #1e2a44;padding:6px 4px;font-size:12px}
 thead td{color:#8ea2c6}
+.status{margin-left:auto;font-size:12px;color:#8ea2c6}
 </style>
 </head>
 <body>
   <div class="topbar">
     <h1>Auction Tracker</h1>
     <button id="addBtn" class="btn">Add lot</button>
-    <span id="status" class="small"></span>
+    <button id="discordBtn" class="btn secondary">Discord</button>
+    <span id="status" class="status"></span>
   </div>
 
   <div id="list" class="grid"></div>
@@ -45,10 +47,21 @@ thead td{color:#8ea2c6}
   <div id="modal" class="modal">
     <div class="box">
       <h2>Add lot</h2>
-      <div class="row"><input id="lotUrl" placeholder="Paste lot URL"/></div>
+      <div><input id="lotUrl" placeholder="Paste lot URL"/></div>
       <div class="row">
         <button class="btn secondary" id="cancel">Cancel</button>
         <button class="btn" id="save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="discordModal" class="modal">
+    <div class="box">
+      <h2>Discord settings</h2>
+      <div><input id="webhook" placeholder="https://discord.com/api/webhooks/..." /></div>
+      <div class="row">
+        <button class="btn secondary" id="dCancel">Close</button>
+        <button class="btn" id="dSave">Save</button>
       </div>
     </div>
   </div>
