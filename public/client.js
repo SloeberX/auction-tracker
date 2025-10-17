@@ -10,8 +10,12 @@ document.getElementById('cancel').onclick = ()=>{ modal.style.display='none'; };
 document.getElementById('save').onclick = async ()=>{
   const url = lotUrl.value.trim();
   if(!url) return;
-  const r = await fetch('/api/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})}).then(r=>r.json());
-  if(r.ok){ modal.style.display='none'; refresh(); } else { alert('Add failed: '+(r.error||'unknown')); }
+  try{
+    const r = await fetch('/api/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});
+    const j = await r.json().catch(()=>({ok:false,error:'Bad JSON'}));
+    if(!r.ok || !j.ok) throw new Error(j.error||('HTTP '+r.status));
+    modal.style.display='none'; refresh();
+  }catch(e){ alert('Add failed: '+(e.message||e)); }
 };
 
 // discord settings modal
@@ -23,9 +27,12 @@ document.getElementById('discordBtn').onclick = async ()=>{
 };
 document.getElementById('dCancel').onclick = ()=> dModal.style.display='none';
 document.getElementById('dSave').onclick = async ()=>{
-  const ok = await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({discordWebhook:webhook.value.trim()})}).then(r=>r.ok);
-  if(!ok) alert('Failed to save');
-  dModal.style.display='none';
+  try{
+    const r = await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({discordWebhook:webhook.value.trim()})});
+    const j = await r.json().catch(()=>({ok:false,error:'Bad JSON'}));
+    if(!r.ok || !j.ok) throw new Error(j.error||('HTTP '+r.status));
+    dModal.style.display='none';
+  }catch(e){ alert('Failed to save: '+(e.message||e)); }
 };
 
 function fmt(i){ return i<10?('0'+i):i; }
@@ -112,9 +119,12 @@ function render(listings, history){
   });
   document.querySelectorAll('[data-ping]').forEach(btn=>{
     btn.onclick = async ()=>{
-      const id = btn.getAttribute('data-ping');
-      const r = await fetch('/api/ping-discord',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})}).then(r=>r.json());
-      if(!r.ok) alert('Discord send failed: '+(r.error||'unknown'));
+      try{
+        const id = btn.getAttribute('data-ping');
+        const r = await fetch('/api/ping-discord',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
+        const j = await r.json().catch(()=>({ok:false,error:'Bad JSON'}));
+        if(!r.ok || !j.ok) throw new Error(j.error||('HTTP '+r.status));
+      }catch(e){ alert('Discord send failed: '+(e.message||e)); }
     };
   });
 }
