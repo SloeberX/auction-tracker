@@ -1,14 +1,14 @@
 {
   "name": "auction-tracker",
-  "version": "1.13.0",
-  "description": "Auction tracker with bid-history, countdown, images, exports, and Discord embeds.",
+  "version": "1.0.0",
   "type": "module",
-  "main": "server.js",
-  "scripts": { "start": "node server.js" },
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
-    "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "playwright": "^1.47.0",
-    "socket.io": "^4.7.5"
+    "socket.io": "^4.7.5",
+    "playwright": "^1.45.0"
   }
 }

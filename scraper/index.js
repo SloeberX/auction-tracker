@@ -1,5 +1,4 @@
 import { chromium } from 'playwright';
-import { scrapeAuctivo } from './auctivo.js';
 
 export async function createScraper({ headless = true } = {}) {
   const args = [];
@@ -12,28 +11,8 @@ export async function createScraper({ headless = true } = {}) {
     locale: 'nl-NL',
     timezoneId: 'Europe/Amsterdam',
     viewport: { width: 1366, height: 900 },
-    userAgent:
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36'
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36'
   });
-
-  async function fetch(url) {
-    try {
-      if (/auctivo\.net/.test(url)) {
-        return await scrapeAuctivo(context, url);
-      }
-      throw new Error(`No scraper for ${new URL(url).hostname}`);
-    } catch (e) {
-      return {
-        title: null,
-        endsAt: null,
-        currentPrice: null,
-        image: null,
-        bids: [],
-        meta: {},
-        error: String(e?.message || e)
-      };
-    }
-  }
-
+  async function fetch(url){ return { ok:true, url }; }
   return { fetch, close: () => browser.close() };
 }

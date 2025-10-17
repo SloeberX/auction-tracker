@@ -1,9 +1,1 @@
-{
-  "discord": {
-    "enabled": false,
-    "webhookUrl": "",
-    "pingOnNewBid": true,
-    "pingAt30m": true,
-    "updateIntervalSec": 60
-  }
-}
+{}
