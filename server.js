@@ -142,6 +142,7 @@ let settings = readJsonSafe(path.join(DATA_DIR,'settings.json'), {});
 
 // ---- Express / Socket.io ----
 const app = express();
+app.use(express.json({ limit: '512kb' }));
 const server = http.createServer(app);
 import { Server as IOServer } from 'socket.io';
 const io = new IOServer(server, { cors: { origin: '*' } });
@@ -158,29 +159,14 @@ app.use('/public', express.static(path.join(__dirname, 'public')));
 
 // basic API
 app.get('/api/listings', (req,res)=>{
-  res.json({ listings, history, settings });
-});
-
-// start server
-server.listen(PORT, ()=>{
-  console.log(`[server] up on http://localhost:${PORT}`);
-});
-
-// ---- Minimal scheduler scaffold to keep process alive ----
-(async function mainLoop(){
   try{
-    const scraper = await createScraper({ headless: (process.env.HEADLESS||'true')==='true' });
-    // no-op loop; just ping to keep Node busy
-    setInterval(()=>{}, 1e9);
-  }catch(e){
-    log('error','scraper init failed', e?.message||e);
-    setInterval(()=>{}, 1e9);
-  }
-})();
-
-// --- Minimal add lot endpoint (append + save) ---
-import bodyParser from 'body-parser';
-app.use(bodyParser.json({ limit: '256kb' }));
+    const fs = await import('node:fs' ); const path = await import('node:path');
+    const dir = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
+    const read = (p, f)=>{ try{ return JSON.parse(fs.readFileSync(path.join(dir, 'data', f), 'utf8')); }catch{ return (f.endsWith('json')&&f.includes('listings'))?[]:{} } };
+    const L = read(dir, 'listings.json'); const H = read(dir, 'history.json'); const S = read(dir, 'settings.json');
+    res.json({ listings: L, history: H, settings: S });
+  }catch{ res.json({ listings: [], history: {}, settings: {} }) }
+});
 
 app.post('/api/add', async (req,res)=>{
   try{
