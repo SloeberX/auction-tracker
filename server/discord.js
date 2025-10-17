@@ -1,26 +1,31 @@
-export async function sendDiscordEmbed(webhook, { title, url, description, image, price, endsAt }) {
-  if (!webhook) return false;
-  const embed = {
-    title: title || 'New lot',
-    url: url || undefined,
-    description: description || undefined,
-    timestamp: new Date().toISOString(),
-    color: 0x4f8cff,
-    fields: []
-  };
-  if (typeof price === 'number') embed.fields.push({ name: 'Price', value: `€ ${price.toFixed(2)}`, inline: true });
-  if (endsAt) embed.fields.push({ name: 'Ends', value: new Date(endsAt).toLocaleString(), inline: true });
-  if (image) embed.image = { url: image };
+import fetch from 'node-fetch';
 
-  const payload = { content: '', embeds: [embed] };
-  try {
-    const r = await fetch(webhook, {
+export async function sendDiscord(webhook, payload){
+  if(!webhook) return false;
+  try{
+    const res = await fetch(webhook, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {'Content-Type':'application/json'},
       body: JSON.stringify(payload)
     });
-    return r.ok;
-  } catch {
+    return res.ok;
+  }catch{
     return false;
   }
+}
+
+export function lotEmbed({title,url,image,price,endsAt,lastChange}){
+  const fields = [];
+  if (typeof price === 'number') fields.push({name:'Price', value:`€ ${price.toFixed(2)}`, inline:true});
+  if (endsAt) fields.push({name:'Ends', value:new Date(endsAt).toLocaleString(), inline:true});
+  if (lastChange) fields.push({name:'Last change', value:lastChange, inline:true});
+  const embed = {
+    title: title || 'Lot update',
+    url: url || undefined,
+    timestamp: new Date().toISOString(),
+    color: 0x4f8cff,
+    fields
+  };
+  if (image) embed.image = { url:image };
+  return { embeds:[embed] };
 }
