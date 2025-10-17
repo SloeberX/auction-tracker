@@ -1,21 +1,26 @@
-# Auction Tracker — Stability Patch
-This script applies a tiny, surgical fix:
-- No-cache headers on server (prevents stale client.js)
-- Hard re-render of the listings grid (prevents old cards/images reappearing)
-- Countdown interval guard (no duplicate timers)
-- Observed-guard tweak to keep a single timestamped price change
+# Auction Tracker — Long-term Stable Failsafe Patch
+This patch adds:
+- Auto-restore from the newest backup if JSON is missing/corrupt
+- 30-day backup pruning + periodic backups (BACKUP_INTERVAL_HOURS)
+- Atomic JSON writes, dedupe on boot, graceful shutdown backups
+- No-cache headers for static files
+- Client hard re-render and single-interval countdown guard
 
 ## Usage
 From your repo root (where `server.js` and `public/` live):
 ```bash
-bash apply_stability_patch.sh
+bash apply_failsafe_patch.sh
 ```
 
 Then commit and push:
 ```bash
 git add -A
-git commit -m "Stability patch: no-cache + hard rerender + interval guards + observed dedupe"
-git push
+git commit -m "Failsafe: auto-restore + 30d backup cleanup + dedupe + atomic writes"
+git push --force-with-lease
 ```
 
-Deploy to LXC as usual (clone fresh, install, run).
+Helpers:
+```bash
+bash restore_last_backup.sh
+bash verify_data_integrity.sh
+```
