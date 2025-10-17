@@ -1,22 +1,21 @@
-Auction Tracker — Complete Build (Discord Embedded)
-==================================================
+# Auction Tracker — Stability Patch
+This script applies a tiny, surgical fix:
+- No-cache headers on server (prevents stale client.js)
+- Hard re-render of the listings grid (prevents old cards/images reappearing)
+- Countdown interval guard (no duplicate timers)
+- Observed-guard tweak to keep a single timestamped price change
 
-Quickstart
-----------
-npm i
-npx playwright install --with-deps chromium
-cp .env.example .env
-# For LXC you likely want:
-#   NO_SANDBOX=true
-#   HEADLESS=true
-node server.js
-# open http://<container-ip>:3000/
+## Usage
+From your repo root (where `server.js` and `public/` live):
+```bash
+bash apply_stability_patch.sh
+```
 
-Discord
--------
-Click the floating "Discord" button on the page. Paste your webhook and choose:
-- @everyone on new bid
-- @everyone when < 30 minutes
-- Edit interval (seconds)
+Then commit and push:
+```bash
+git add -A
+git commit -m "Stability patch: no-cache + hard rerender + interval guards + observed dedupe"
+git push
+```
 
-Settings persist in data/settings.json; runtime message IDs in data/discord-state.json.
+Deploy to LXC as usual (clone fresh, install, run).

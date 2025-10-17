@@ -1,3 +1,4 @@
+window.__intervals = window.__intervals || {};
 const socket = io();
 const cardsEl = document.getElementById('cards');
 const cardMap = new Map();
