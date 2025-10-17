@@ -1,15 +1,55 @@
 <!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8"/>
-    <title>Auction Tracker</title>
-    <meta http-equiv="Cache-Control" content="no-store" />
-    <style>body{font-family:system-ui,Segoe UI,Arial;margin:20px} .log{opacity:.7}</style>
-  </head>
-  <body>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Auction Tracker</title>
+<link rel="preconnect" href="/"/>
+<style>
+:root{--bg:#0b1220;--card:#111a2b;--muted:#7a8baa;--text:#dbe4ff;--accent:#6ea8fe;--chip:#1b2740}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font:15px/1.45 system-ui,Segoe UI,Roboto,Arial;padding:22px}
+.topbar{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+h1{font-weight:700;font-size:22px}
+.btn{background:var(--accent);color:#051028;border:0;padding:8px 12px;border-radius:10px;font-weight:600;cursor:pointer}
+.btn.secondary{background:transparent;border:1px solid var(--chip);color:var(--text)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
+.card{background:var(--card);border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.card h3{font-size:16px;margin:8px 0 6px}
+.row{display:flex;align-items:center;justify-content:space-between;margin:6px 0;color:var(--muted)}
+img.thumb{width:100%;height:180px;object-fit:cover;border-radius:10px;background:#000}
+.small{font-size:12px;color:var(--muted)}
+.actions{display:flex;gap:8px;margin-top:8px}
+.badge{background:var(--chip);color:var(--text);padding:3px 8px;border-radius:999px;font-size:11px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center}
+.modal .box{background:var(--card);padding:18px;border-radius:12px;min-width:340px}
+.modal .box h2{margin-bottom:10px}
+.modal input{width:100%;padding:8px;border-radius:8px;border:1px solid #22314e;background:#0a1322;color:#cfe1ff}
+.modal .row{justify-content:flex-end;gap:10px;margin-top:10px}
+.empty{opacity:.6;padding:10px}
+</style>
+</head>
+<body>
+  <div class="topbar">
     <h1>Auction Tracker</h1>
-    <div id="app">Loading…</div>
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="/client.js"></script>
-  </body>
+    <button id="addBtn" class="btn">Add lot</button>
+    <span id="status" class="small"></span>
+  </div>
+
+  <div id="list" class="grid"></div>
+  <div id="empty" class="empty" style="display:none">No listings yet. Click <b>Add lot</b> and paste a URL.</div>
+
+  <div id="modal" class="modal">
+    <div class="box">
+      <h2>Add lot</h2>
+      <div class="row"><input id="lotUrl" placeholder="Paste lot URL"/></div>
+      <div class="row">
+        <button class="btn secondary" id="cancel">Cancel</button>
+        <button class="btn" id="save">Save</button>
+      </div>
+    </div>
+  </div>
+
+<script src="/client.js"></script>
+</body>
 </html>
