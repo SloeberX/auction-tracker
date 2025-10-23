@@ -1,14 +1,14 @@
+/* Light client that survives CSP/static oddities */
 const elList = document.getElementById('list');
 const elEmpty = document.getElementById('empty');
 const elStatus = document.getElementById('status');
 
-// add lot modal
 const modal = document.getElementById('modal');
 const lotUrl = document.getElementById('lotUrl');
-document.getElementById('addBtn').onclick = ()=>{ modal.style.display='flex'; lotUrl.value=''; lotUrl.focus(); };
+document.getElementById('addBtn').onclick = ()=>{ modal.style.display='grid'; lotUrl.value=''; lotUrl.focus(); };
 document.getElementById('cancel').onclick = ()=>{ modal.style.display='none'; };
 document.getElementById('save').onclick = async ()=>{
-  const url = lotUrl.value.trim();
+  const url = (lotUrl.value||'').trim();
   if(!url) return;
   try{
     const r = await fetch('/api/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});
@@ -18,12 +18,11 @@ document.getElementById('save').onclick = async ()=>{
   }catch(e){ alert('Add failed: '+(e.message||e)); }
 };
 
-// discord settings modal
 const dModal = document.getElementById('discordModal');
 const webhook = document.getElementById('webhook');
 document.getElementById('discordBtn').onclick = async ()=>{
-  dModal.style.display='flex';
-  try{ const s = await fetch('/api/settings').then(r=>r.json()); webhook.value = (s.discordWebhook||''); }catch{}
+  dModal.style.display='grid';
+  try{ const s = await fetch('/api/settings').then(r=>r.json()); webhook.value = s.discordWebhook||''; }catch{}
 };
 document.getElementById('dCancel').onclick = ()=> dModal.style.display='none';
 document.getElementById('dSave').onclick = async ()=>{
@@ -35,43 +34,36 @@ document.getElementById('dSave').onclick = async ()=>{
   }catch(e){ alert('Failed to save: '+(e.message||e)); }
 };
 
-function fmt(i){ return i<10?('0'+i):i; }
+function fmt(i){return i<10?('0'+i):i;}
 function countdown(iso){
   if(!iso) return '—';
-  const end = new Date(iso).getTime();
-  const now = Date.now();
+  const end = new Date(iso).getTime(); const now = Date.now();
   let s = Math.max(0, Math.floor((end-now)/1000));
-  const d = Math.floor(s/86400); s%=86400;
-  const h = Math.floor(s/3600); s%=3600;
-  const m = Math.floor(s/60); s%=60;
+  const d = Math.floor(s/86400); s%=86400; const h = Math.floor(s/3600); s%=3600; const m = Math.floor(s/60); s%=60;
   return `${d}d ${fmt(h)}:${fmt(m)}:${fmt(s)}`;
 }
-
 function row(t,a){
   const tr = document.createElement('tr');
-  const td1 = document.createElement('td'); td1.textContent = t;
-  const td2 = document.createElement('td'); td2.textContent = a;
-  tr.appendChild(td1); tr.appendChild(td2);
-  return tr;
+  const td1 = document.createElement('td'); td1.textContent=t;
+  const td2 = document.createElement('td'); td2.textContent=a;
+  tr.appendChild(td1); tr.appendChild(td2); return tr;
 }
 
 function render(listings, history){
   elList.innerHTML='';
   if(!listings || !listings.length){ elEmpty.style.display='block'; return; }
   elEmpty.style.display='none';
-
   for(const it of listings){
     const card = document.createElement('div'); card.className='card';
     const hist = (history && history[it.id]) || [];
     const lastUpdated = new Date(it.updatedAt||Date.now()).toLocaleTimeString();
     const lastChange = it.lastChange ? new Date(it.lastChange).toLocaleTimeString() : '—';
-
     card.innerHTML = `
       <img class="thumb" src="${it.image||''}" onerror="this.style.display='none'">
       <h3>${it.title||it.url||'Untitled'}</h3>
       <div class="row"><span class="small">Open listing</span><a class="btn secondary" href="${it.url}" target="_blank" rel="noopener">Open</a></div>
       <div class="row"><span class="small">Ends in</span><span class="badge" data-end="${it.endsAt||''}">--:--:--</span></div>
-      <div class="row"><span class="small">Price</span><span>${it.currentPrice!=null?('€ '+it.currentPrice.toFixed(2)):'—'}</span></div>
+      <div class="row"><span class="small">Price</span><span>${it.currentPrice!=null?('€ '+Number(it.currentPrice).toFixed(2)):'—'}</span></div>
       <div class="row small"><span>Last updated</span><span>${lastUpdated}</span></div>
       <div class="row small"><span>Last change</span><span>${lastChange}</span></div>
       <div class="actions">
@@ -92,27 +84,19 @@ function render(listings, history){
       tb.appendChild(row(t,a));
     }
   }
+  setInterval(()=>{ document.querySelectorAll('[data-end]').forEach(el=>{
+    const iso = el.getAttribute('data-end'); el.textContent = countdown(iso);
+  });},1000);
 
-  // countdown ticker
-  setInterval(()=>{
-    document.querySelectorAll('[data-end]').forEach(el=>{
-      const iso = el.getAttribute('data-end'); el.textContent = countdown(iso);
-    });
-  }, 1000);
-
-  // actions
   document.querySelectorAll('[data-remove]').forEach(btn=>{
-    btn.onclick = async ()=>{
-      const id = btn.getAttribute('data-remove');
+    btn.onclick = async ()=>{ const id=btn.getAttribute('data-remove');
       await fetch('/api/remove',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
       refresh();
     };
   });
   document.querySelectorAll('[data-rename]').forEach(btn=>{
-    btn.onclick = async ()=>{
-      const id = btn.getAttribute('data-rename');
-      const title = prompt('New title:');
-      if(!title) return;
+    btn.onclick = async ()=>{ const id=btn.getAttribute('data-rename');
+      const title = prompt('New title:'); if(!title) return;
       await fetch('/api/rename',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,title})});
       refresh();
     };
@@ -120,7 +104,7 @@ function render(listings, history){
   document.querySelectorAll('[data-ping]').forEach(btn=>{
     btn.onclick = async ()=>{
       try{
-        const id = btn.getAttribute('data-ping');
+        const id=btn.getAttribute('data-ping');
         const r = await fetch('/api/ping-discord',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
         const j = await r.json().catch(()=>({ok:false,error:'Bad JSON'}));
         if(!r.ok || !j.ok) throw new Error(j.error||('HTTP '+r.status));
@@ -130,14 +114,11 @@ function render(listings, history){
 }
 
 async function refresh(){
-  const r = await fetch('/api/listings',{cache:'no-store'}).then(r=>r.json()).catch(()=>({}));
-  render(r.listings||[], r.history||{});
-  elStatus.textContent = 'Updated at ' + new Date().toLocaleTimeString();
-}
-
-const ioSock = window.io ? window.io() : null;
-if (ioSock){
-  ioSock.on('change', refresh);
+  try{
+    const data = await fetch('/api/listings',{cache:'no-store'}).then(r=>r.json());
+    render(data.listings||[], data.history||{});
+    elStatus.textContent = 'Updated at ' + new Date().toLocaleTimeString();
+  }catch{ elStatus.textContent='Load failed'; }
 }
 refresh();
 setInterval(refresh, 15000);

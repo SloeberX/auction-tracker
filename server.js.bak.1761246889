@@ -154,15 +154,3 @@ async function updateLoop(){
   setTimeout(updateLoop, Math.max(5000, ms));
 }
 setTimeout(updateLoop, 5000);
-
-// ===== WEBUI HOTFIX (idempotent) =====
-try {
-  const PUB = process.cwd() + '/public';
-  app.get('/', (req,res)=> res.sendFile(PUB + '/index.html'));
-  app.get('/client.js', (req,res)=> res.sendFile(PUB + '/client.js'));
-  const expressMod = await import('express');
-  app.use('/public', expressMod.default.static(PUB, { maxAge:0, etag:false, lastModified:false }));
-} catch (e) {
-  console.error('webui hotfix failed', e);
-}
-// ===== END WEBUI HOTFIX =====

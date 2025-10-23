@@ -1,72 +1,68 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Auction Tracker</title>
-<meta http-equiv="Cache-Control" content="no-store"/>
-<style>
-:root{--bg:#0b1220;--card:#111a2b;--muted:#7a8baa;--text:#dbe4ff;--accent:#6ea8fe;--chip:#1b2740}
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font:15px/1.45 system-ui,Segoe UI,Roboto,Arial;padding:22px}
-.topbar{display:flex;align-items:center;gap:12px;margin-bottom:18px}
-h1{font-weight:700;font-size:22px}
-.btn{background:var(--accent);color:#051028;border:0;padding:8px 12px;border-radius:10px;font-weight:600;cursor:pointer}
-.btn.secondary{background:transparent;border:1px solid var(--chip);color:var(--text)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:18px}
-.card{background:var(--card);border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
-.card h3{font-size:16px;margin:8px 0 6px}
-.row{display:flex;align-items:center;justify-content:space-between;margin:6px 0;color:var(--muted)}
-img.thumb{width:100%;height:200px;object-fit:cover;border-radius:10px;background:#000}
-.small{font-size:12px;color:var(--muted)}
-.actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
-.badge{background:var(--chip);color:var(--text);padding:3px 8px;border-radius:999px;font-size:11px}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:10}
-.modal .box{background:var(--card);padding:18px;border-radius:12px;min-width:360px;max-width:90vw}
-.modal .box h2{margin-bottom:10px}
-.modal input{width:100%;padding:8px;border-radius:8px;border:1px solid #22314e;background:#0a1322;color:#cfe1ff}
-.modal .row{justify-content:flex-end;gap:10px;margin-top:10px}
-.empty{opacity:.6;padding:10px}
-.table{width:100%;border-collapse:collapse;margin-top:6px}
-td{border-top:1px solid #1e2a44;padding:6px 4px;font-size:12px}
-thead td{color:#8ea2c6}
-.status{margin-left:auto;font-size:12px;color:#8ea2c6}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Auction Tracker</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial,'Noto Sans',sans-serif;background:#0c1520;color:#e7eef7;margin:0}
+    header{display:flex;align-items:center;gap:.75rem;padding:14px 18px;border-bottom:1px solid #1b2a3b;background:#0e1a29;position:sticky;top:0}
+    h1{font-size:18px;margin:0;font-weight:700}
+    #status{margin-left:auto;font-size:12px;color:#9fb3c8}
+    .container{padding:18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+    .card{background:#0f1d2d;border:1px solid #1e3147;border-radius:14px;padding:12px 12px 8px}
+    .thumb{width:100%;height:205px;object-fit:cover;border-radius:10px;border:1px solid #23384e;background:#0c1520;margin-bottom:8px}
+    .row{display:flex;justify-content:space-between;align-items:center;margin:6px 0}
+    .small{font-size:12px;color:#9fb3c8}
+    .btn{background:#274c77;color:#fff;border:none;padding:8px 12px;border-radius:10px;cursor:pointer}
+    .btn.secondary{background:#1e3147}
+    .badge{background:#13253a;padding:4px 8px;border-radius:8px}
+    .table{width:100%;border-collapse:collapse;margin-top:10px}
+    .table thead td{font-size:12px;color:#9fb3c8}
+    .table td{border-top:1px solid #1e3147;padding:6px 0;font-size:14px}
+    #empty{padding:22px;color:#9fb3c8}
+    /* modal */
+    .modal{position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.45);backdrop-filter:blur(2px)}
+    .sheet{width:min(540px,92vw);background:#0f1d2d;border:1px solid #1e3147;border-radius:14px;padding:16px}
+    .field{width:100%;padding:10px;border-radius:10px;border:1px solid #1e3147;background:#0c1520;color:#e7eef7}
+    .actions{display:flex;gap:10px;margin-top:10px}
+  </style>
 </head>
 <body>
-  <div class="topbar">
+  <header>
     <h1>Auction Tracker</h1>
     <button id="addBtn" class="btn">Add lot</button>
     <button id="discordBtn" class="btn secondary">Discord</button>
-    <span id="status" class="status"></span>
-  </div>
+    <span id="status" class="small"></span>
+  </header>
 
-  <div id="list" class="grid"></div>
-  <div id="empty" class="empty" style="display:none">No listings yet. Click <b>Add lot</b> and paste a URL.</div>
+  <div id="empty">No listings yet. Click <b>Add lot</b> and paste a URL.</div>
+  <div class="container" id="list"></div>
 
-  <div id="modal" class="modal">
-    <div class="box">
-      <h2>Add lot</h2>
-      <div><input id="lotUrl" placeholder="Paste lot URL"/></div>
-      <div class="row">
-        <button class="btn secondary" id="cancel">Cancel</button>
-        <button class="btn" id="save">Save</button>
+  <!-- Add lot modal -->
+  <div class="modal" id="modal">
+    <div class="sheet">
+      <h3 style="margin-top:0">Add lot</h3>
+      <input id="lotUrl" class="field" placeholder="Paste lot URL">
+      <div class="actions">
+        <button id="cancel" class="btn secondary">Cancel</button>
+        <button id="save" class="btn">Save</button>
       </div>
     </div>
   </div>
 
-  <div id="discordModal" class="modal">
-    <div class="box">
-      <h2>Discord settings</h2>
-      <div><input id="webhook" placeholder="https://discord.com/api/webhooks/..." /></div>
-      <div class="row">
-        <button class="btn secondary" id="dCancel">Close</button>
-        <button class="btn" id="dSave">Save</button>
+  <!-- Discord settings -->
+  <div class="modal" id="discordModal">
+    <div class="sheet">
+      <h3 style="margin-top:0">Discord settings</h3>
+      <input id="webhook" class="field" placeholder="https://discord.com/api/webhooks/....">
+      <div class="actions">
+        <button id="dCancel" class="btn secondary">Close</button>
+        <button id="dSave" class="btn">Save</button>
       </div>
     </div>
   </div>
 
-<script src="/socket.io/socket.io.js"></script>
-<script src="/client.js"></script>
+  <script src="/client.js" defer></script>
 </body>
 </html>
